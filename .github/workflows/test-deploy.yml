@@ -1,0 +1,60 @@
+name: Deploy to TEST
+on:
+  pull_request:
+    branches: [ test ]
+    types: [ opened, synchronize, reopened ]
+
+jobs:
+  deploy-test:
+    runs-on: ubuntu-latest
+    environment: test
+    
+    steps:
+    - name: Checkout this repo
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+
+    - name: Set up JDK 1.8
+      uses: actions/setup-java@v4
+      with:
+        distribution: "zulu"
+        java-version: 8
+
+    - name: Extract group ID from POM
+      id: pom-info
+      run: |
+        # Extract groupId from pom.xml
+        groupId=$(mvn help:evaluate -Dexpression=project.groupId -q -DforceStdout)
+        echo "group-id=$groupId" >> $GITHUB_OUTPUT
+        echo "Found group ID: $groupId"
+
+    - name: Download artifact from Exchange or rebuild
+      run: |
+        # Try to download from Exchange using extracted group ID
+        if [ -n "${{ steps.pom-info.outputs.group-id }}" ]; then
+          echo "Attempting to download from Exchange..."
+          if mvn dependency:copy \
+          -Dartifact=${{ steps.pom-info.outputs.group-id }}:${{ github.event.repository.name }}:LATEST \
+          -DoutputDirectory=target \
+          --settings .maven/settings.xml \
+          -Dclient.id="${{ secrets.CONNECTED_APP_CLIENT_ID }}" \
+          -Dclient.secret="${{ secrets.CONNECTED_APP_CLIENT_SECRET }}"; then
+            echo "Successfully downloaded from Exchange"
+          else
+            echo "Failed to download from Exchange, rebuilding..."
+            mvn clean compile test package -DskipMunitTests
+          fi
+        else
+          echo "Could not extract group ID, rebuilding application..."
+          mvn clean compile test package -DskipMunitTests
+        fi
+
+    - name: Deploy to On-Prem TEST Server
+      run: |
+        mvn deploy --settings .maven/settings.xml -DskipMunitTests -DmuleDeploy \
+        -Dclient.id="${{ secrets.CONNECTED_APP_CLIENT_ID }}" \
+        -Dclient.secret="${{ secrets.CONNECTED_APP_CLIENT_SECRET }}" \
+        -Danypoint.username="${{ secrets.ANYPOINT_USERNAME }}" \
+        -Danypoint.password="${{ secrets.ANYPOINT_PASSWORD }}" \
+        -Denvironment=TEST
