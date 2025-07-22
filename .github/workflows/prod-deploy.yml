@@ -114,9 +114,8 @@ jobs:
         mvn deploy -DmuleDeploy \
           -DskipTests \
           -s ~/.m2/settings.xml \
-          -Dmule.env="PROD" \
-          -Dconn.app.id="${{ secrets.CONNECTED_APP_CLIENT_ID }}" \
-          -Dconn.app.s="${{ secrets.CONNECTED_APP_CLIENT_SECRET }}" \
+          -Dclient.id="${{ secrets.CONNECTED_APP_CLIENT_ID }}" \
+          -Dclient.secret="${{ secrets.CONNECTED_APP_CLIENT_SECRET }}" \
           -Denvironment=PROD
         
         echo "✅ Application deployed successfully to mac-prod"

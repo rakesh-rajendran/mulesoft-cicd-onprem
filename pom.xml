@@ -97,6 +97,7 @@
 						<applicationName>${onprem.application.name}</applicationName>
 						<environment>${onprem.environment}</environment>
 						<muleVersion>${app.runtime}</muleVersion>
+						<server>Repository</server>
 					</armDeployment>
 				</configuration>
 			</plugin>
