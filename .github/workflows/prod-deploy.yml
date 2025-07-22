@@ -92,11 +92,19 @@ jobs:
                   <id>mule-public</id>
                   <url>https://repository.mulesoft.org/nexus/content/repositories/public</url>
                 </repository>
+                <repository>
+                  <id>mulesoft-releases</id>
+                  <url>https://repository.mulesoft.org/releases/</url>
+                </repository>
               </repositories>
               <pluginRepositories>
                 <pluginRepository>
                   <id>mule-public</id>
                   <url>https://repository.mulesoft.org/nexus/content/repositories/public</url>
+                </pluginRepository>
+                <pluginRepository>
+                  <id>mulesoft-releases</id>
+                  <url>https://repository.mulesoft.org/releases/</url>
                 </pluginRepository>
               </pluginRepositories>
             </profile>
