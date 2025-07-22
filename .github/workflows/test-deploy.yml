@@ -50,9 +50,66 @@ jobs:
           mvn clean compile test package -DskipMunitTests
         fi
 
+    - name: Create dynamic settings.xml
+      run: |
+        mkdir -p ~/.m2
+        cat > ~/.m2/settings.xml << EOF
+        <?xml version="1.0" encoding="UTF-8"?>
+        <settings xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 https://maven.apache.org/xsd/settings-1.2.0.xsd">
+          
+          <proxies>
+          </proxies>
+
+          <servers>
+            <server>
+              <id>Repository</id>
+              <username>~~~Client~~~</username>
+              <password>${CONNECTED_APP_CLIENT_ID}~?~${CONNECTED_APP_CLIENT_SECRET}</password>
+            </server>
+          </servers>
+          
+          <pluginGroups>
+            <pluginGroup>org.mule.tools</pluginGroup>
+          </pluginGroups>
+
+          <profiles>
+            <profile>
+              <id>mule-extra-repos</id>
+              <activation>
+                <activeByDefault>true</activeByDefault>
+              </activation>
+              <repositories>
+                <repository>
+                  <id>mule-public</id>
+                  <url>https://repository.mulesoft.org/nexus/content/repositories/public</url>
+                </repository>
+              </repositories>
+              <pluginRepositories>
+                <pluginRepository>
+                  <id>mule-public</id>
+                  <url>https://repository.mulesoft.org/nexus/content/repositories/public</url>
+                </pluginRepository>
+              </pluginRepositories>
+            </profile>
+          </profiles>
+        </settings>
+        EOF
+      env:
+        CONNECTED_APP_CLIENT_ID: ${{ secrets.CONNECTED_APP_CLIENT_ID }}
+        CONNECTED_APP_CLIENT_SECRET: ${{ secrets.CONNECTED_APP_CLIENT_SECRET }}
+
     - name: Deploy to On-Prem TEST Server
       run: |
-        mvn deploy --settings .maven/settings.xml -DskipMunitTests -DmuleDeploy \
-        -Dclient.id="${{ secrets.CONNECTED_APP_CLIENT_ID }}" \
-        -Dclient.secret="${{ secrets.CONNECTED_APP_CLIENT_SECRET }}" \
-        -Denvironment=TEST
+        echo "🚀 Deploying to mac-test on-premise server"
+        
+        mvn deploy -DmuleDeploy \
+          -DskipTests \
+          -s ~/.m2/settings.xml \
+          -Dmule.env="TEST" \
+          -Dconn.app.id="${{ secrets.CONNECTED_APP_CLIENT_ID }}" \
+          -Dconn.app.s="${{ secrets.CONNECTED_APP_CLIENT_SECRET }}" \
+          -Denvironment=TEST
+        
+        echo "✅ Application deployed successfully to mac-test"
