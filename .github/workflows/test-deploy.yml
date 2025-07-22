@@ -55,6 +55,4 @@ jobs:
         mvn deploy --settings .maven/settings.xml -DskipMunitTests -DmuleDeploy \
         -Dclient.id="${{ secrets.CONNECTED_APP_CLIENT_ID }}" \
         -Dclient.secret="${{ secrets.CONNECTED_APP_CLIENT_SECRET }}" \
-        -Danypoint.username="${{ secrets.ANYPOINT_USERNAME }}" \
-        -Danypoint.password="${{ secrets.ANYPOINT_PASSWORD }}" \
         -Denvironment=TEST

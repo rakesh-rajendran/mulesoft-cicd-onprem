@@ -27,11 +27,6 @@
 		<app.name.dev>${project.artifactId}-dev</app.name.dev>
 		<app.name.test>${project.artifactId}-test</app.name.test>
 		<app.name.prod>${project.artifactId}</app.name.prod>
-		
-		<!-- On-premise deployment properties -->
-		<mule.server.url>http://localhost:7777</mule.server.url>
-		<mule.server.username>admin</mule.server.username>
-		<mule.server.password>admin</mule.server.password>
 	</properties>
 
 	<profiles>
@@ -99,8 +94,6 @@
 						<uri>https://anypoint.mulesoft.com</uri>
 						<target>${onprem.target}</target>
 						<targetType>server</targetType>
-						<username>${anypoint.username}</username>
-						<password>${anypoint.password}</password>
 						<applicationName>${onprem.application.name}</applicationName>
 						<environment>${onprem.environment}</environment>
 						<muleVersion>${app.runtime}</muleVersion>
