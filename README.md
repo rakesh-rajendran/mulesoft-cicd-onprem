@@ -1,59 +1,125 @@
-# MuleSoft CI/CD Pipeline Documentation
+# MuleSoft CI/CD Pipeline Documentation - On-Premise Deployment
 
 ## Overview
 
-This project implements a comprehensive CI/CD pipeline for MuleSoft applications using GitHub Actions and Maven. The pipeline supports automated deployment to three environments: Development (DEV), Test (TEST), and Production (PROD).
+This project implements a comprehensive CI/CD pipeline for MuleSoft applications using GitHub Actions and Maven for deployment to on-premise Mule runtime servers. The pipeline supports automated deployment to three environments: Development (DEV), Test (TEST), and Production (PROD) using Anypoint Runtime Manager (ARM).
 
 ## Project Structure
 
 ```
-mulesoft-ci-cd/
+mulesoft-cicd-onprem/
 ├── .github/
 │   └── workflows/
 │       ├── dev-deploy.yml      # Development deployment workflow
 │       ├── test-deploy.yml     # Test deployment workflow
 │       └── prod-deploy.yml     # Production deployment workflow
-├── pom.xml                     # Maven configuration with multi-environment profiles
+├── pom.xml                     # Maven configuration with on-premise deployment profiles
 ├── src/
 │   ├── main/
 │   │   ├── mule/              # Mule application flows
 │   │   └── resources/         # Application resources and configurations
 │   └── test/
 │       └── munit/             # MUnit test cases
-└── .maven/
-    └── settings.xml           # Maven settings for Anypoint Platform authentication
+└── README.md                   # This documentation file
 ```
+
+## Architecture and Design Decisions
+
+### Dynamic Configuration Management
+- **Dynamic settings.xml Creation**: Maven settings are created dynamically in each workflow for better security and environment-specific configurations
+- **No Static Configuration Files**: Eliminated static .maven/settings.xml to prevent credential exposure
+- **Environment-Specific Parameters**: Each environment uses specific server targets and configurations
+
+### Security and Authentication
+- **Connected App Authentication**: Uses modern Connected App credentials for Anypoint Platform authentication
+- **GitHub Secrets Management**: All sensitive information stored as GitHub repository secrets
+- **No Username/Password**: Eliminated legacy username/password authentication in favor of Connected App credentials
 
 ## Maven Configuration (pom.xml)
 
 ### Key Features
 
 - **Multi-Environment Support**: Configured with profiles for DEV, TEST, and PROD environments
-- **CloudHub 2.0 Deployment**: Uses the latest Mule Maven plugin for CloudHub 2.0 deployments
-- **Artifact Management**: Publishes artifacts to Anypoint Exchange for reuse
+- **On-Premise ARM Deployment**: Uses Mule Maven plugin for deployment to on-premise servers via ARM
+- **Java 17 Compatibility**: Optimized for Java 17 runtime environment
+- **Enhanced Connector Versions**: Uses updated connector versions for better stability
 
 ### Environment Profiles
 
-The `pom.xml` defines three Maven profiles:
+The `pom.xml` defines three Maven profiles for on-premise deployment:
 
-| Profile | Environment | Application Name | CloudHub Environment |
-|---------|------------|------------------|---------------------|
-| `dev` | DEV | `mulesoft-ci-cd-dev` | DEV |
-| `test` | TEST | `mulesoft-ci-cd-test` | TEST |
-| `prod` | PROD | `mulesoft-ci-cd` | PROD |
+| Profile | Environment | Application Name | On-Premise Target | ARM Environment |
+|---------|------------|------------------|-------------------|----------------|
+| `dev` | DEV | `mulesoft-cicd-onprem-dev` | `mac-dev` | DEV |
+| `test` | TEST | `mulesoft-cicd-onprem-test` | `mac-test` | TEST |
+| `prod` | PROD | `mulesoft-cicd-onprem` | `mac-prod` | PROD |
 
 ### Key Properties
 
 - **Runtime Version**: Mule 4.9.7
-- **Java Version**: 17
-- **CloudHub Target**: Cloudhub-US-East-2
-- **vCores**: 0.1 (Development sizing)
-- **Replicas**: 1
+- **Java Version**: 17 (compatible with connector requirements)
+- **Deployment Method**: ARM (Anypoint Runtime Manager)
+- **Target Type**: Server (on-premise)
+- **Server Targets**: 
+  - `mac-dev` (Development server)
+  - `mac-test` (Test server)
+  - `mac-prod` (Production server)
 
 ### Dependencies
 
-- **HTTP Connector**: v1.10.3
-- **Sockets Connector**: v1.2.5
+- **HTTP Connector**: v1.10.0 (Java 17 compatible)
+- **Sockets Connector**: v1.2.4 (stable version)
+
+## Branching Strategy
+
+### Branch Structure
+
+```
+main (Production)
+├── test (Test Environment)
+├── dev (Development Environment)
+└── feature/* (Feature branches)
+```
+
+### Branching Workflow
+
+1. **Feature Development**:
+   - Create feature branches from `dev`
+   - Naming convention: `feature/[feature-name]`
+   - Example: `feature/add-logging-enhancement`
+
+2. **Development Integration**:
+   - Merge feature branches into `dev` branch
+   - Automatic deployment to DEV environment (`mac-dev`)
+   - Integration testing in development environment
+
+3. **Test Promotion**:
+   - Create Pull Request from `dev` to `test`
+   - Manual approval required
+   - Automatic deployment to TEST environment (`mac-test`)
+   - User acceptance testing
+
+4. **Production Release**:
+   - Create Pull Request from `test` to `main`
+   - Manual approval with enhanced protection rules
+   - Automatic deployment to PROD environment (`mac-prod`)
+   - Production monitoring and validation
+
+### Branch Protection Rules
+
+- **`main` branch**: 
+  - Requires pull request reviews
+  - Requires status checks to pass
+  - Requires branches to be up to date before merging
+  - Restricts pushes to administrators only
+
+- **`test` branch**:
+  - Requires pull request reviews
+  - Requires status checks to pass
+
+- **`dev` branch**:
+  - Allows direct pushes for rapid development
+  - Automatic CI/CD triggers
 
 ## CI/CD Workflows
 
@@ -65,21 +131,25 @@ The `pom.xml` defines three Maven profiles:
 
 1. **Build Job**:
    - Checks out code
-   - Caches Maven dependencies
-   - Sets up JDK 1.8
+   - Caches Maven dependencies with optimized cache keys
+   - Sets up JDK 1.8 for build compatibility
    - Runs `mvn clean compile test package`
-   - Stamps artifact with commit hash
-   - Uploads artifact for reuse
+   - Stamps artifact with commit hash for traceability
+   - Uploads artifact for deployment reuse
 
-2. **Publish Job**:
+2. **Deploy Job**:
+   - Creates dynamic Maven settings.xml with authentication
    - Downloads built artifact
-   - Publishes to Anypoint Exchange
-   - Uses Connected App credentials for authentication
+   - Validates artifact existence
+   - Extracts version information from POM
+   - Deploys to on-premise DEV server (`mac-dev`)
+   - Generates comprehensive deployment report
 
-3. **Deploy Job**:
-   - Downloads artifact
-   - Deploys to CloudHub DEV environment
-   - Uses environment protection rules
+**Key Features**:
+- **Enhanced Error Handling**: Validates artifacts before deployment
+- **Rich Reporting**: GitHub Step Summary with deployment details
+- **Optimized Caching**: Specific cache keys for better performance
+- **Security**: Dynamic credential management
 
 ### 2. Test Deployment (`test-deploy.yml`)
 
@@ -91,10 +161,13 @@ The `pom.xml` defines three Maven profiles:
    - Attempts to download latest artifact from Exchange
    - Falls back to rebuilding if download fails
    - Extracts group ID dynamically from POM
+   - Validates artifact integrity
 
 2. **Deploy to TEST**:
-   - Deploys to CloudHub TEST environment
+   - Creates dynamic Maven settings.xml
+   - Deploys to on-premise TEST server (`mac-test`)
    - Uses PR-specific SHA for deployment tracking
+   - Provides detailed deployment feedback
 
 ### 3. Production Deployment (`prod-deploy.yml`)
 
@@ -102,15 +175,53 @@ The `pom.xml` defines three Maven profiles:
 
 **Workflow Steps**:
 
-1. **Artifact Resolution with Validation**:
+1. **Enhanced Artifact Resolution**:
    - Attempts to download latest artifact from Exchange
-   - Rebuilds if download fails
+   - Rebuilds if download fails with comprehensive error handling
    - Validates artifact existence before deployment
+   - Implements retry logic for robust operations
 
 2. **Deploy to PROD**:
-   - Deploys to CloudHub PROD environment
+   - Creates dynamic Maven settings.xml with enhanced security
+   - Deploys to on-premise PROD server (`mac-prod`)
    - Includes additional validation steps
-   - Uses environment protection rules
+   - Uses environment protection rules for safety
+
+## Deployment Strategy
+
+### Environment Progression
+
+```
+Development → Test → Production
+    ↓           ↓        ↓
+  mac-dev   mac-test  mac-prod
+```
+
+### Deployment Patterns
+
+1. **Continuous Deployment (DEV)**:
+   - Automatic deployment on every push to `dev`
+   - Rapid feedback loop for developers
+   - Integration testing environment
+
+2. **Continuous Delivery (TEST)**:
+   - Deployment triggered by Pull Request
+   - Manual approval for promotion
+   - User acceptance testing environment
+
+3. **Controlled Release (PROD)**:
+   - Deployment triggered by Pull Request to main
+   - Enhanced approval process
+   - Production monitoring and rollback capabilities
+
+### Deployment Validation
+
+Each deployment includes:
+- **Artifact Validation**: Ensures JAR file exists and is valid
+- **Version Tracking**: Extracts and reports application version
+- **Environment Verification**: Confirms target environment configuration
+- **Deployment Reporting**: Comprehensive success/failure reporting
+- **GitHub Integration**: Rich step summaries and status reporting
 
 ## Required GitHub Secrets
 
@@ -127,62 +238,122 @@ The following secrets must be configured in your GitHub repository:
 3. Create a new Connected App with the following scopes:
    - `Design Center Developer`
    - `Exchange Contributor`
-   - `Cloudhub Application Developer`
    - `Runtime Manager`
+   - `Cloudhub Application Developer` (for ARM access)
+
+## On-Premise Server Configuration
+
+### Prerequisites
+
+Before deploying to on-premise servers, ensure:
+
+1. **Server Registration**: Your on-premise Mule runtime servers must be registered in Anypoint Runtime Manager:
+   - `mac-dev` - Development server
+   - `mac-test` - Test server
+   - `mac-prod` - Production server
+
+2. **Server Requirements**:
+   - **Mule Runtime**: 4.9.7 installed and running
+   - **Java Version**: 17 (CRITICAL: Java 21 not supported by HTTP connector)
+   - **Server Registration**: Registered and visible in ARM
+   - **Network Connectivity**: Proper connectivity to Anypoint Platform
+
+3. **Server Status**: Verify servers are online and healthy in Runtime Manager
+
+### Java Version Compatibility
+
+⚠️ **IMPORTANT**: Your on-premise servers must run Java 17, not Java 21.
+
+**Issue**: The HTTP connector (v1.10.0) supports Java versions [1.8, 11, 17] but NOT Java 21.
+
+**Solution**: Configure your on-premise servers to use Java 17:
+
+1. **Install Java 17** on all servers (mac-dev, mac-test, mac-prod)
+2. **Update Mule Configuration**:
+   ```bash
+   # Edit wrapper.conf in your Mule installation
+   sudo nano $MULE_HOME/conf/wrapper.conf
+   
+   # Update Java command
+   wrapper.java.command=/path/to/java17/bin/java
+   ```
+3. **Restart Mule Runtime** on all servers
+4. **Verify Java Version**: Confirm Mule is using Java 17
+
+### Server Registration Steps
+
+1. Download and install Mule Runtime 4.9.7 on each server
+2. Configure servers to use Java 17 (critical step)
+3. Register each server with Anypoint Platform using the registration token
+4. Verify server connectivity in Runtime Manager console
+5. Configure server groups if needed for load balancing
 
 ## Environment Protection Rules
 
 Configure GitHub environment protection rules for:
 
-- **development**: For DEV deployments
-- **test**: For TEST deployments  
-- **production**: For PROD deployments (recommend required reviewers)
+### Development Environment
+- **Name**: `development`
+- **Protection**: Basic protection rules
+- **Deployment**: Automatic on push to dev branch
 
-## Maven Settings
+### Test Environment
+- **Name**: `test`
+- **Protection**: 
+  - Required reviewers (recommended)
+  - Deployment branches: test branch only
+- **Deployment**: Manual approval required
 
-The pipeline uses `.maven/settings.xml` for Anypoint Platform authentication. Ensure this file contains:
+### Production Environment
+- **Name**: `production`
+- **Protection**: 
+  - Required reviewers (mandatory)
+  - Deployment branches: main branch only
+  - Additional approval delays
+- **Deployment**: Enhanced manual approval process
+
+## Maven Configuration Details
+
+### Dynamic Settings.xml Template
+
+Each workflow creates a dynamic `settings.xml` with:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
-<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
-          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 
-          http://maven.apache.org/xsd/settings-1.0.0.xsd">
-    
-    <servers>
-        <server>
-            <id>Repository</id>
-            <username>~~~Client~~~</username>
-            <password>${client.id}~?~${client.secret}</password>
-        </server>
-        <server>
-            <id>anypoint-exchange-v3</id>
-            <username>~~~Client~~~</username>
-            <password>${client.id}~?~${client.secret}</password>
-        </server>
-    </servers>
-    
+<settings xmlns="http://maven.apache.org/SETTINGS/1.2.0">
+  <servers>
+    <server>
+      <id>Repository</id>
+      <username>~~~Client~~~</username>
+      <password>${client.id}~?~${client.secret}</password>
+    </server>
+  </servers>
+  
+  <profiles>
+    <profile>
+      <id>mule-extra-repos</id>
+      <activation><activeByDefault>true</activeByDefault></activation>
+      <repositories>
+        <repository>
+          <id>mule-public</id>
+          <url>https://repository.mulesoft.org/nexus/content/repositories/public</url>
+        </repository>
+        <repository>
+          <id>mulesoft-releases</id>
+          <url>https://repository.mulesoft.org/releases/</url>
+        </repository>
+      </repositories>
+    </profile>
+  </profiles>
 </settings>
 ```
 
-## Deployment Process
+### Repository Fallback Strategy
 
-### Development Deployment
-1. Push code to `dev` branch
-2. Automatic build, test, publish, and deploy
-3. Application deployed as `mulesoft-ci-cd-dev`
-
-### Test Deployment
-1. Create Pull Request to `test` branch
-2. Automatic deployment to TEST environment
-3. Uses latest artifact from Exchange or rebuilds if needed
-4. Application deployed as `mulesoft-ci-cd-test`
-
-### Production Deployment
-1. Create Pull Request to `main` branch
-2. Manual approval required (if protection rules configured)
-3. Automatic deployment to PROD environment
-4. Application deployed as `mulesoft-ci-cd`
+Maven resolves dependencies from:
+1. **Organization's Exchange** (primary)
+2. **MuleSoft Public Repository** (fallback)
+3. **MuleSoft Releases Repository** (fallback)
 
 ## Build Commands
 
@@ -201,58 +372,178 @@ mvn package
 mvn deploy -Denvironment=DEV -DmuleDeploy
 ```
 
-### Testing
+### Environment-Specific Deployment
 ```bash
-# Run MUnit tests
-mvn test
+# Deploy to DEV
+mvn deploy -Denvironment=DEV -DmuleDeploy -Dclient.id=xxx -Dclient.secret=xxx
 
-# Skip tests during deployment
-mvn deploy -DskipMunitTests
+# Deploy to TEST
+mvn deploy -Denvironment=TEST -DmuleDeploy -Dclient.id=xxx -Dclient.secret=xxx
+
+# Deploy to PROD
+mvn deploy -Denvironment=PROD -DmuleDeploy -Dclient.id=xxx -Dclient.secret=xxx
 ```
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Build Failures**:
-   - Verify JDK version compatibility
-   - Check Maven dependency resolution
-   - Ensure MUnit tests pass
+1. **Java Version Incompatibility**:
+   - **Error**: `JavaVersionNotSupportedByExtensionException: Extension 'HTTP' does not support Java 21`
+   - **Solution**: Configure on-premise servers to use Java 17
+   - **Verification**: Check server Java version in Runtime Manager
 
-2. **Deployment Failures**:
-   - Verify Connected App credentials
-   - Check CloudHub resource availability
-   - Validate environment-specific configurations
+2. **Authentication Failures**:
+   - **Error**: `401 Unauthorized: Missing credentials`
+   - **Solution**: Verify Connected App credentials in GitHub secrets
+   - **Check**: Ensure Connected App has proper scopes
 
-3. **Exchange Publishing Issues**:
-   - Ensure proper organization ID in `pom.xml`
-   - Verify Exchange permissions for Connected App
-   - Check artifact naming conventions
+3. **Deployment Failures**:
+   - **Error**: Server not found or offline
+   - **Solution**: Verify server registration in ARM
+   - **Check**: Server connectivity to Anypoint Platform
+
+4. **Dependency Resolution Issues**:
+   - **Error**: Artifact not found
+   - **Solution**: Check connector version availability
+   - **Fallback**: Use public MuleSoft repositories
+
+5. **Build Failures**:
+   - **Error**: Maven compilation errors
+   - **Solution**: Verify JDK version compatibility
+   - **Check**: Maven dependency versions
+
+### Server Configuration Issues
+
+1. **Java Version Mismatch**:
+   ```bash
+   # Check current Java version on server
+   java -version
+   
+   # Update Mule wrapper.conf
+   wrapper.java.command=/usr/lib/jvm/java-17-openjdk/bin/java
+   
+   # Restart Mule service
+   sudo systemctl restart mule
+   ```
+
+2. **Server Registration Problems**:
+   - Verify registration token is valid
+   - Check network connectivity to Anypoint Platform
+   - Ensure server appears in Runtime Manager
 
 ### Logs and Monitoring
 
-- Monitor deployments in Anypoint Runtime Manager
-- Check GitHub Actions logs for detailed error information
-- Use CloudHub application logs for runtime issues
+- **GitHub Actions Logs**: Check workflow execution details
+- **Anypoint Runtime Manager**: Monitor server health and deployments
+- **Application Logs**: Review on-premise server logs for runtime issues
+- **Deployment Reports**: Check GitHub Step Summary for deployment details
 
 ## Security Considerations
 
-- Never commit credentials to version control
-- Use GitHub Secrets for all sensitive information
-- Regularly rotate Connected App credentials
-- Implement proper environment protection rules
-- Use least privilege principle for Connected App scopes
+### Authentication Security
+- **No Static Credentials**: All credentials managed through GitHub secrets
+- **Connected App Authentication**: Modern, secure authentication method
+- **Dynamic Configuration**: Settings.xml created dynamically per deployment
+
+### Access Control
+- **GitHub Environment Protection**: Controls deployment approvals
+- **Branch Protection Rules**: Prevents unauthorized code changes
+- **Scope-Limited Connected Apps**: Minimal required permissions
+
+### Network Security
+- **Secure Communication**: All communication over HTTPS
+- **Server Registration**: Servers authenticated via registration tokens
+- **Firewall Configuration**: Ensure proper network access for ARM communication
 
 ## Performance Optimization
 
-- Utilize Maven dependency caching
-- Implement artifact reuse between environments
-- Consider increasing vCores for production workloads
-- Monitor CloudHub resource utilization
+### Build Performance
+- **Maven Caching**: Optimized cache keys for faster builds
+- **Parallel Execution**: Jobs run concurrently where possible
+- **Artifact Reuse**: Built artifacts reused across deployment stages
 
-## Maintenance
+### Deployment Performance
+- **Smart Artifact Resolution**: Efficient artifact management
+- **Connection Pooling**: Optimized Maven repository connections
+- **Retry Logic**: Robust error handling and recovery
 
-- Regularly update Mule runtime versions
-- Keep Maven plugin versions current
-- Review and update dependency versions
-- Monitor security advisories for third-party components
+### Server Performance
+- **Resource Monitoring**: Monitor server resource utilization
+- **Load Balancing**: Consider server clustering for high availability
+- **Application Optimization**: Memory and CPU usage optimization
+
+## Maintenance and Updates
+
+### Regular Maintenance Tasks
+
+1. **Dependency Updates**:
+   - Review and update connector versions quarterly
+   - Test compatibility with new versions
+   - Update Maven plugin versions
+
+2. **Security Updates**:
+   - Rotate Connected App credentials annually
+   - Review and update GitHub secrets
+   - Update server certificates as needed
+
+3. **Server Maintenance**:
+   - Keep Mule runtime versions current
+   - Update Java versions when connector support expands
+   - Monitor server health and performance
+
+4. **Documentation Updates**:
+   - Keep README current with configuration changes
+   - Update deployment procedures
+   - Maintain troubleshooting guides
+
+### Version Upgrade Strategy
+
+1. **Connector Upgrades**:
+   - Test new versions in development first
+   - Verify Java compatibility
+   - Update all environments consistently
+
+2. **Runtime Upgrades**:
+   - Plan coordinated upgrades across all servers
+   - Test thoroughly in non-production environments
+   - Schedule maintenance windows for production
+
+3. **Java Version Upgrades**:
+   - Monitor connector support for newer Java versions
+   - Plan systematic upgrades when support is available
+   - Test application compatibility thoroughly
+
+## Best Practices
+
+### Development Workflow
+- **Feature Branches**: Use feature branches for all development
+- **Code Reviews**: Mandatory code reviews for all changes
+- **Testing**: Comprehensive testing in development environment
+- **Documentation**: Keep code and deployment documentation current
+
+### Deployment Practices
+- **Gradual Rollouts**: Deploy through environments progressively
+- **Rollback Planning**: Always have rollback procedures ready
+- **Monitoring**: Monitor deployments and application health
+- **Communication**: Notify stakeholders of deployment schedules
+
+### Security Practices
+- **Secret Management**: Secure handling of all credentials
+- **Access Control**: Principle of least privilege
+- **Audit Trail**: Maintain deployment and access logs
+- **Regular Reviews**: Periodic security assessments
+
+## Support and Troubleshooting Contacts
+
+### Technical Support
+- **MuleSoft Support**: For runtime and connector issues
+- **GitHub Support**: For CI/CD pipeline issues
+- **Infrastructure Team**: For server configuration issues
+
+### Documentation References
+- **MuleSoft Documentation**: https://docs.mulesoft.com/
+- **GitHub Actions**: https://docs.github.com/en/actions
+- **Maven Plugin**: https://docs.mulesoft.com/mule-runtime/4.4/deploy-on-premises
+
+This comprehensive guide covers all aspects of the on-premise deployment pipeline, from initial setup to ongoing maintenance. Follow these guidelines to ensure reliable, secure, and efficient deployments to your on-premise Mule runtime environment.
